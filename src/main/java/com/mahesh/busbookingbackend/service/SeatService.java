@@ -13,5 +13,6 @@ public interface SeatService {
     SeatDTO getSeat(Long id);
     List<SeatDTO> getAllSeats();
     void deleteSeat(Long id);
+    SeatDTO lockSeat(Long scheduleId, Long seatNumber);
 
 }

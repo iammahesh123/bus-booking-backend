@@ -1,7 +1,6 @@
 package com.mahesh.busbookingbackend.controller;
 
-import com.mahesh.busbookingbackend.dtos.BusCreateDTO;
-import com.mahesh.busbookingbackend.dtos.BusResponseDTO;
+import com.mahesh.busbookingbackend.dtos.*;
 import com.mahesh.busbookingbackend.service.BusService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -104,8 +103,13 @@ public class BusController {
             @ApiResponse(responseCode = "401", description = "Unauthorized access"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<List<BusResponseDTO>> getBuses() {
-        return ResponseEntity.ok(busService.getBuss());
+    public ResponseEntity<PaginationResponseModel<BusResponseDTO>> getBuses(
+            @RequestParam(value = "pageNumber", required = false) Integer pageNumber,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "sortColumn", required = false) String sortColumn,
+            @RequestParam(value = "orderBY", required = false) OrderBy orderBy){
+        PageModel pageModel = new PageModel(pageNumber, pageSize, sortColumn, orderBy);
+        return ResponseEntity.ok(busService.getBuss(pageModel));
     }
 
     @DeleteMapping("/{bus_id}")

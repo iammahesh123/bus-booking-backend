@@ -30,12 +30,4 @@ public class ErrorResponse {
         this.message = message;
         this.path = path;
     }
-
-    // Getters and setters
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public int getStatus() { return status; }
-    public String getError() { return error; }
-    public String getMessage() { return message; }
-    public String getPath() { return path; }
-    // ... setters if needed
 }

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PassengerDTO {
+public class PassengerCreateDTO {
     private String passengerName;
     private int age;
     private String gender;

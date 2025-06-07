@@ -1,5 +1,5 @@
 package com.mahesh.busbookingbackend.enums;
 
 public enum BookingStatus {
-    CONFIRMED, CANCELLED,PENDING;
+    CONFIRMED, EXPIRED ,CANCELLED,PENDING;
 }

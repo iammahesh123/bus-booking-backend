@@ -21,4 +21,5 @@ public class BusBookingCreateDTO {
     private PaymentStatus paymentStatus;
     private Set<Long> seatIds;
     private List<Long> passengerIds;
+    private long busScheduleId;
 }

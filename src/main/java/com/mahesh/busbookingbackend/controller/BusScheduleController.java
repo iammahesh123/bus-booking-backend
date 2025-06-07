@@ -1,7 +1,6 @@
 package com.mahesh.busbookingbackend.controller;
 
-import com.mahesh.busbookingbackend.dtos.BusScheduleCreateDTO;
-import com.mahesh.busbookingbackend.dtos.BusScheduleResponseDTO;
+import com.mahesh.busbookingbackend.dtos.*;
 import com.mahesh.busbookingbackend.service.BusScheduleService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -39,8 +38,13 @@ public class BusScheduleController {
     }
 
     @GetMapping
-    private ResponseEntity<List<BusScheduleResponseDTO>> getAllSchedules() {
-        return ResponseEntity.ok(busScheduleService.getSchedules());
+    private ResponseEntity<PaginationResponseModel<BusScheduleResponseDTO>> getAllSchedules(
+            @RequestParam(value = "pageNumber", required = false) Integer pageNumber,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "sortColumn", required = false) String sortColumn,
+            @RequestParam(value = "orderBY", required = false) OrderBy orderBy){
+        PageModel pageModel = new PageModel(pageNumber, pageSize, sortColumn, orderBy);
+        return ResponseEntity.ok(busScheduleService.getSchedules(pageModel));
     }
 
     @DeleteMapping("/{bus_schedule_id}")

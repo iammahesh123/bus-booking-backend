@@ -10,7 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(exclude = {"busBooking"})
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -23,6 +23,7 @@ public class SeatEntity extends BaseEntity<String> {
     @Enumerated(EnumType.STRING)
     private SeatType seatType;
     @Enumerated(EnumType.STRING)
+    @Column(name = "seat_status", length = 20)
     private SeatStatus seatStatus;
     private int seatPrice;
 

@@ -10,7 +10,7 @@ public class BusBookingMapper {
     public BusBookingDTO toDTO(BusBookingEntity busBooking, ModelMapper modelMapper) {
         BusBookingDTO dto = modelMapper.map(busBooking, BusBookingDTO.class);
         if(busBooking.getPassengers() != null) {
-            dto.setPassengerDTOS(null);
+            dto.setPassengerCreateDTOS(null);
         }
         if(busBooking.getSeats() != null) {
             dto.setSeatDTOS(null);

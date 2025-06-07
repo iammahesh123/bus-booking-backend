@@ -1,14 +1,13 @@
 package com.mahesh.busbookingbackend.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
 import com.mahesh.busbookingbackend.enums.BusAmenities;
 import com.mahesh.busbookingbackend.enums.BusType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,4 +34,8 @@ public class BusEntity extends BaseEntity<String> {
     private String operatorName;
     private String operatorNumber;
     private int totalSeats;
+
+    @OneToMany(mappedBy = "busEntity", cascade = CascadeType.ALL)
+    @ToString.Exclude
+    private List<BusScheduleEntity> busSchedules = new ArrayList<>();
 }

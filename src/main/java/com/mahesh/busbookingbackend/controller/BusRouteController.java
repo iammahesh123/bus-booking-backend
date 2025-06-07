@@ -1,7 +1,6 @@
 package com.mahesh.busbookingbackend.controller;
 
-import com.mahesh.busbookingbackend.dtos.BusRouteCreateDTO;
-import com.mahesh.busbookingbackend.dtos.BusRouteResponseDTO;
+import com.mahesh.busbookingbackend.dtos.*;
 import com.mahesh.busbookingbackend.service.BusRouteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -102,8 +101,13 @@ public class BusRouteController {
             @ApiResponse(responseCode = "204", description = "No bus routes found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    private ResponseEntity<List<BusRouteResponseDTO>> getAllBusRoutes() {
-        return ResponseEntity.ok(busRouteService.getRoutes());
+    private ResponseEntity<PaginationResponseModel<BusRouteResponseDTO>> getAllBusRoutes(
+            @RequestParam(value = "pageNumber", required = false) Integer pageNumber,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "sortColumn", required = false) String sortColumn,
+            @RequestParam(value = "orderBY", required = false) OrderBy orderBy){
+        PageModel pageModel = new PageModel(pageNumber, pageSize, sortColumn, orderBy);
+        return ResponseEntity.ok(busRouteService.getRoutes(pageModel));
     }
 
     @DeleteMapping("/{bus_route_id}")
@@ -123,4 +127,25 @@ public class BusRouteController {
         busRouteService.deleteRoute(id);
         return ResponseEntity.ok(HttpStatus.OK);
     }
+
+    @GetMapping("/cities")
+    @Operation(
+            summary = "Get all available cities",
+            description = "Retrieves a list of all unique cities from existing bus routes"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of cities retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = String[].class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized access"),
+            @ApiResponse(responseCode = "204", description = "No cities found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<List<String>> getAllUniqueCities() {
+        List<String> cities = busRouteService.getAllUniqueCities();
+        if (cities.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(cities);
+    }
+
 }

@@ -3,6 +3,8 @@ package com.mahesh.busbookingbackend.service.impl;
 
 import com.mahesh.busbookingbackend.dtos.BusRouteCreateDTO;
 import com.mahesh.busbookingbackend.dtos.BusRouteResponseDTO;
+import com.mahesh.busbookingbackend.dtos.PageModel;
+import com.mahesh.busbookingbackend.dtos.PaginationResponseModel;
 import com.mahesh.busbookingbackend.entity.BusRoute;
 import com.mahesh.busbookingbackend.entity.BusStops;
 import com.mahesh.busbookingbackend.mapper.BusRouteMapper;
@@ -12,10 +14,15 @@ import com.mahesh.busbookingbackend.service.BusRouteService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static com.mahesh.busbookingbackend.utility.PaginationUtility.applyPagination;
 
 @Service
 @RequiredArgsConstructor
@@ -68,14 +75,30 @@ public class BusRouteServiceImpl implements BusRouteService {
     }
 
     @Override
-    public List<BusRouteResponseDTO> getRoutes() {
-        List<BusRoute> busRoutes = busRouteRepository.findAll();
-        return busRoutes.stream().map(busRoute -> busRouteMapper.toDTO(busRoute, modelMapper)).collect(Collectors.toList());
+    public PaginationResponseModel<BusRouteResponseDTO> getRoutes(PageModel pageModel) {
+        Pageable pageable = applyPagination(pageModel);
+        Page<BusRoute> busRoutes = busRouteRepository.findAll(pageable);
+        List<BusRouteResponseDTO> busRouteResponseDTOS = busRoutes.stream().map(busRoute -> busRouteMapper.toDTO(busRoute, modelMapper)).toList();
+        PaginationResponseModel<BusRouteResponseDTO> paginationResponseModel = new PaginationResponseModel<>();
+        paginationResponseModel.setData(busRouteResponseDTOS);
+        paginationResponseModel.setTotalRecords(busRoutes.getTotalElements());
+        paginationResponseModel.setTotalPages(busRoutes.getTotalPages());
+        return paginationResponseModel;
     }
 
     @Override
     public void deleteRoute(Long id) {
         BusRoute busRoute = busRouteRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Not found"));
         busRouteRepository.delete(busRoute);
+    }
+
+    public List<String> getAllUniqueCities() {
+        List<String> sourceCities = busRouteRepository.findAllDistinctSourceCities();
+        List<String> destinationCities = busRouteRepository.findAllDistinctDestinationCities();
+
+        return Stream.concat(sourceCities.stream(), destinationCities.stream())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
     }
 }

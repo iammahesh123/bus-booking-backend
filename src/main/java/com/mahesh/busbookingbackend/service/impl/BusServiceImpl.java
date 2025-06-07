@@ -1,7 +1,6 @@
 package com.mahesh.busbookingbackend.service.impl;
 
-import com.mahesh.busbookingbackend.dtos.BusCreateDTO;
-import com.mahesh.busbookingbackend.dtos.BusResponseDTO;
+import com.mahesh.busbookingbackend.dtos.*;
 import com.mahesh.busbookingbackend.entity.BusEntity;
 import com.mahesh.busbookingbackend.mapper.BusMapper;
 import com.mahesh.busbookingbackend.repository.BusRepository;
@@ -9,10 +8,14 @@ import com.mahesh.busbookingbackend.service.BusService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.mahesh.busbookingbackend.utility.PaginationUtility.applyPagination;
 
 @Service
 @RequiredArgsConstructor
@@ -49,9 +52,15 @@ public class BusServiceImpl implements BusService {
     }
 
     @Override
-    public List<BusResponseDTO> getBuss() {
-        List<BusEntity> busEntities = busRepository.findAll();
-        return busEntities.stream().map(busEntity -> busMapper.toDTO(busEntity,modelMapper)).collect(Collectors.toList());
+    public PaginationResponseModel<BusResponseDTO> getBuss(PageModel pageModel) {
+        Pageable pageable = applyPagination(pageModel);
+        Page<BusEntity> busEntities = busRepository.findAll(pageable);
+        List<BusResponseDTO> busResponseDTOS = busEntities.stream().map(busEntity -> busMapper.toDTO(busEntity,modelMapper)).collect(Collectors.toList());
+        PaginationResponseModel<BusResponseDTO> paginationResponseModel = new PaginationResponseModel<>();
+        paginationResponseModel.setData(busResponseDTOS);
+        paginationResponseModel.setTotalRecords(busEntities.getTotalElements());
+        paginationResponseModel.setTotalPages(busEntities.getTotalPages());
+        return paginationResponseModel;
     }
 
     @Override

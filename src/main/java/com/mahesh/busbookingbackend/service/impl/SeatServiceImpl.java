@@ -6,6 +6,7 @@ import com.mahesh.busbookingbackend.entity.BusScheduleEntity;
 import com.mahesh.busbookingbackend.entity.SeatEntity;
 import com.mahesh.busbookingbackend.enums.SeatStatus;
 import com.mahesh.busbookingbackend.enums.SeatType;
+import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.SeatMapper;
 import com.mahesh.busbookingbackend.repository.BusScheduleRepository;
 import com.mahesh.busbookingbackend.repository.SeatRepository;
@@ -14,6 +15,9 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -142,5 +146,27 @@ public class SeatServiceImpl implements SeatService {
         return seatEntities.stream()
                 .map(seat -> seatMapper.toDTO(seat, modelMapper))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    @Retryable(value = {OptimisticLockingFailureException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
+    public SeatDTO lockSeat(Long scheduleId, Long seatNumber) {
+        SeatEntity seat = seatRepository.findSeatForBookingWithLock(scheduleId, seatNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Seat not found"));
+
+        // Add explicit validation
+        if (seat.getSeatStatus() == null) {
+            throw new IllegalStateException("Seat status cannot be null");
+        }
+
+        if (seat.getSeatStatus() != SeatStatus.AVAILABLE) {
+            throw new IllegalStateException("Seat is already " + seat.getSeatStatus());
+        }
+
+        seat.setSeatStatus(SeatStatus.PENDING);
+        // Consider adding flush to immediately detect any DB constraint violations
+        seatRepository.saveAndFlush(seat);
+
+        return seatMapper.toDTO(seat, modelMapper);
     }
 }

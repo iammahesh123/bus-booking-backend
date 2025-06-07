@@ -1,16 +1,16 @@
 package com.mahesh.busbookingbackend.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Data
 @AllArgsConstructor
@@ -21,12 +21,14 @@ public class BusScheduleEntity extends BaseEntity<String> {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "bus_id")
+    @ToString.Exclude
     private BusEntity busEntity;
 
-    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "route_id")
+    @ToString.Exclude
     private BusRoute busRoute;
 
     private LocalDate scheduleDate;
@@ -36,5 +38,8 @@ public class BusScheduleEntity extends BaseEntity<String> {
     private int farePrice;
 
     @OneToMany(mappedBy = "busSchedule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
     private List<SeatEntity> seats = new ArrayList<>();
+
+
 }

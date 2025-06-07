@@ -4,5 +4,5 @@ import lombok.Getter;
 
 @Getter
 public enum SeatStatus {
-    AVAILABLE, BOOKED, UNAVAILABLE, SELECTED;
+    AVAILABLE, PENDING,BOOKED, UNAVAILABLE, SELECTED;
 }

@@ -2,6 +2,8 @@ package com.mahesh.busbookingbackend.service.impl;
 
 import com.mahesh.busbookingbackend.dtos.BusScheduleCreateDTO;
 import com.mahesh.busbookingbackend.dtos.BusScheduleResponseDTO;
+import com.mahesh.busbookingbackend.dtos.PageModel;
+import com.mahesh.busbookingbackend.dtos.PaginationResponseModel;
 import com.mahesh.busbookingbackend.entity.BusEntity;
 import com.mahesh.busbookingbackend.entity.BusRoute;
 import com.mahesh.busbookingbackend.entity.BusScheduleEntity;
@@ -10,14 +12,20 @@ import com.mahesh.busbookingbackend.repository.BusRepository;
 import com.mahesh.busbookingbackend.repository.BusRouteRepository;
 import com.mahesh.busbookingbackend.repository.BusScheduleRepository;
 import com.mahesh.busbookingbackend.service.BusScheduleService;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.mahesh.busbookingbackend.utility.PaginationUtility.applyPagination;
+
+@Slf4j
 @Service
 public class BusScheduleServiceImpl implements BusScheduleService {
 
@@ -68,15 +76,24 @@ public class BusScheduleServiceImpl implements BusScheduleService {
     }
 
     @Override
-    public List<BusScheduleResponseDTO> getSchedules() {
-        List<BusScheduleEntity> list = busScheduleRepository.findAll();
-        return list.stream().map(scheduleEntity -> busScheduleMapper.toDTO(scheduleEntity,modelMapper)).collect(Collectors.toList());
+    public PaginationResponseModel<BusScheduleResponseDTO> getSchedules(PageModel pageModel) {
+        Pageable pageable = applyPagination(pageModel);
+        Page<BusScheduleEntity> list = busScheduleRepository.findAll(pageable);
+        List<BusScheduleResponseDTO> busScheduleResponseDTOS = list.stream().map(scheduleEntity -> busScheduleMapper.toDTO(scheduleEntity,modelMapper)).toList();
+        PaginationResponseModel<BusScheduleResponseDTO> paginationResponseModel = new PaginationResponseModel<>();
+        paginationResponseModel.setTotalRecords(list.getTotalElements());
+        paginationResponseModel.setTotalPages(list.getTotalPages());
+        paginationResponseModel.setData(busScheduleResponseDTOS);
+        return paginationResponseModel;
     }
 
     @Override
     public List<BusScheduleResponseDTO> getSchedules(String source, String destination, LocalDate date) {
-        List<BusScheduleEntity> schedule =  busScheduleRepository.findBySourceAndDestinationAndDate(source, destination, date);
-       return schedule.stream().map(scheduleEntity -> busScheduleMapper.toDTO(scheduleEntity,modelMapper)).collect(Collectors.toList());
+        List<BusScheduleEntity> schedule = busScheduleRepository.findBySourceAndDestinationAndDate(source, destination, date);
+        log.info(schedule.toString());
+        return schedule.stream()
+                .map(scheduleEntity -> busScheduleMapper.toDTO(scheduleEntity, modelMapper))
+                .collect(Collectors.toList());
     }
 
     @Override

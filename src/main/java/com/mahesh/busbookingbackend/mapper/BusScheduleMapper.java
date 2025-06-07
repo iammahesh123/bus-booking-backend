@@ -17,12 +17,14 @@ public class BusScheduleMapper {
 
     public BusScheduleResponseDTO toDTO(BusScheduleEntity busScheduleEntity, ModelMapper modelMapper) {
         BusScheduleResponseDTO responseDTO = modelMapper.map(busScheduleEntity, BusScheduleResponseDTO.class);
+
         if(busScheduleEntity.getBusEntity() != null) {
-            responseDTO.setBusResponseDTO(busMapper.toDTO(busScheduleEntity.getBusEntity(),modelMapper));
+            responseDTO.setBusResponseDTO(busMapper.toDTO(busScheduleEntity.getBusEntity(), modelMapper));
         }
         if(busScheduleEntity.getBusRoute() != null) {
-            responseDTO.setRouteResponseDTO(busRouteMapper.toDTO(busScheduleEntity.getBusRoute(),modelMapper));
+            responseDTO.setRouteResponseDTO(busRouteMapper.toDTO(busScheduleEntity.getBusRoute(), modelMapper));
         }
         return responseDTO;
     }
+
 }
