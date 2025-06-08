@@ -2,8 +2,8 @@ package com.mahesh.busbookingbackend.dtos;
 
 import com.mahesh.busbookingbackend.enums.BusAmenities;
 import com.mahesh.busbookingbackend.enums.BusType;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

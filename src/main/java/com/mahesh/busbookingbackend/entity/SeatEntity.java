@@ -3,7 +3,7 @@ package com.mahesh.busbookingbackend.entity;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
 import com.mahesh.busbookingbackend.enums.SeatStatus;
 import com.mahesh.busbookingbackend.enums.SeatType;
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

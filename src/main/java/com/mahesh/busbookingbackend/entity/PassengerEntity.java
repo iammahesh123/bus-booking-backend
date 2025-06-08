@@ -1,7 +1,7 @@
 package com.mahesh.busbookingbackend.entity;
 
 import com.mahesh.busbookingbackend.audit.BaseEntity;
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

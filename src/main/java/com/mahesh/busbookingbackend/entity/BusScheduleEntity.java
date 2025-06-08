@@ -2,9 +2,10 @@ package com.mahesh.busbookingbackend.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.*;
 
+import javax.persistence.Entity;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;

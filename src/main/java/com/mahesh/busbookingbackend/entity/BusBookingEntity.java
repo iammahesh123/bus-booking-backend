@@ -3,7 +3,7 @@ package com.mahesh.busbookingbackend.entity;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
 import com.mahesh.busbookingbackend.enums.BookingStatus;
 import com.mahesh.busbookingbackend.enums.PaymentStatus;
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
 import com.mahesh.busbookingbackend.enums.BusAmenities;
 import com.mahesh.busbookingbackend.enums.BusType;
-import jakarta.persistence.*;
+import javax.persistence.*;
 import lombok.*;
 
 import java.util.ArrayList;
