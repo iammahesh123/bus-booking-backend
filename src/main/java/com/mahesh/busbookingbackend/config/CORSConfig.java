@@ -1,6 +1,6 @@
 package com.mahesh.busbookingbackend.config;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.servlet.configuration.WebMvcSecurityConfiguration;

@@ -11,7 +11,7 @@ import com.mahesh.busbookingbackend.mapper.SeatMapper;
 import com.mahesh.busbookingbackend.repository.BusScheduleRepository;
 import com.mahesh.busbookingbackend.repository.SeatRepository;
 import com.mahesh.busbookingbackend.service.SeatService;
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
