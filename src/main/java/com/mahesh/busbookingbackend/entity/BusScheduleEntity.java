@@ -2,6 +2,7 @@ package com.mahesh.busbookingbackend.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
+import com.mahesh.busbookingbackend.enums.ScheduleDuration;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,6 +33,13 @@ public class BusScheduleEntity extends BaseEntity<String> {
     @ToString.Exclude
     private BusRoute busRoute;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "automation_duration", nullable = true)
+    private ScheduleDuration automationDuration;
+
+    @Column(name = "automation_end_date", nullable = true)
+    private LocalDate automationEndDate;
+
     private LocalDate scheduleDate;
     private LocalTime arrivalTime;
     private LocalTime departureTime;
@@ -42,5 +50,6 @@ public class BusScheduleEntity extends BaseEntity<String> {
     @ToString.Exclude
     private List<SeatEntity> seats = new ArrayList<>();
 
-
+    @Column(name = "is_master_record", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean isMasterRecord = false;
 }

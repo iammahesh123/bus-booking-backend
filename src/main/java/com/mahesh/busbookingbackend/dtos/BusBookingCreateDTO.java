@@ -2,6 +2,7 @@ package com.mahesh.busbookingbackend.dtos;
 
 import com.mahesh.busbookingbackend.enums.BookingStatus;
 import com.mahesh.busbookingbackend.enums.PaymentStatus;
+import com.mahesh.busbookingbackend.enums.ScheduleDuration;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

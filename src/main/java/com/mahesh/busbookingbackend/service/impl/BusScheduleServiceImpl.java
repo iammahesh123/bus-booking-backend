@@ -7,17 +7,20 @@ import com.mahesh.busbookingbackend.dtos.PaginationResponseModel;
 import com.mahesh.busbookingbackend.entity.BusEntity;
 import com.mahesh.busbookingbackend.entity.BusRoute;
 import com.mahesh.busbookingbackend.entity.BusScheduleEntity;
+import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.BusScheduleMapper;
 import com.mahesh.busbookingbackend.repository.BusRepository;
 import com.mahesh.busbookingbackend.repository.BusRouteRepository;
 import com.mahesh.busbookingbackend.repository.BusScheduleRepository;
 import com.mahesh.busbookingbackend.service.BusScheduleService;
+import com.mahesh.busbookingbackend.service.ScheduleAutomationService;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,44 +37,107 @@ public class BusScheduleServiceImpl implements BusScheduleService {
     private final ModelMapper modelMapper;
     private final BusRepository busRepository;
     private final BusRouteRepository busRouteRepository;
+    private final ScheduleAutomationService scheduleAutomationService;
 
-    public BusScheduleServiceImpl(BusScheduleRepository busScheduleRepository, BusScheduleMapper busScheduleMapper, ModelMapper modelMapper, BusRepository busRepository, BusRouteRepository busRouteRepository) {
+    public BusScheduleServiceImpl(BusScheduleRepository busScheduleRepository, BusScheduleMapper busScheduleMapper, ModelMapper modelMapper, BusRepository busRepository, BusRouteRepository busRouteRepository, ScheduleAutomationService scheduleAutomationService) {
         this.busScheduleRepository = busScheduleRepository;
         this.busScheduleMapper = busScheduleMapper;
         this.modelMapper = modelMapper;
         this.busRepository = busRepository;
         this.busRouteRepository = busRouteRepository;
+        this.scheduleAutomationService = scheduleAutomationService;
     }
 
     @Override
+    @Transactional
     public BusScheduleResponseDTO createSchedule(BusScheduleCreateDTO scheduleCreateDTO) {
+        log.info("Received request to create schedule. Master flag: {}", scheduleCreateDTO.isMasterRecord());
+
+        BusEntity bus = busRepository.findById(scheduleCreateDTO.getBusId()).orElseThrow(
+                () -> new ResourceNotFoundException("Bus not found with id: " + scheduleCreateDTO.getBusId()));
+        BusRoute route = busRouteRepository.findById(scheduleCreateDTO.getRouteId()).orElseThrow(
+                () -> new ResourceNotFoundException("BusRoute not found with id: " + scheduleCreateDTO.getRouteId()));
+
         BusScheduleEntity scheduleEntity = new BusScheduleEntity();
-        BusEntity bus = busRepository.findById(scheduleCreateDTO.getBusId()).orElse(null);
-        BusRoute route = busRouteRepository.findById(scheduleCreateDTO.getRouteId()).orElse(null);
         BeanUtils.copyProperties(scheduleCreateDTO, scheduleEntity);
+        scheduleEntity.setBusEntity(bus);
+        scheduleEntity.setBusRoute(route);
+        scheduleEntity.setTotalSeats(bus.getTotalSeats());
+
+        if (scheduleCreateDTO.isMasterRecord()) {
+            if (scheduleCreateDTO.getAutomationDuration() == null) {
+                throw new ResourceNotFoundException("AutomationDuration must be provided for a master schedule.");
+            }
+            if (busScheduleRepository.existsByBusEntityIdAndBusRouteIdAndScheduleDate(bus.getId(), route.getId(), scheduleCreateDTO.getScheduleDate())) {
+                throw new ResourceNotFoundException("An automated schedule already exists for this bus and route.");
+            }
+            scheduleEntity.setMasterRecord(true);
+            scheduleEntity.setAutomationDuration(scheduleCreateDTO.getAutomationDuration());
+        }
+
         BusScheduleEntity savedSchedule = busScheduleRepository.save(scheduleEntity);
-        savedSchedule.setBusEntity(bus);
-        savedSchedule.setBusRoute(route);
-        busScheduleRepository.save(savedSchedule);
-        return busScheduleMapper.toDTO(savedSchedule,modelMapper);
+
+        // --- TRIGGER INITIAL BATCH CREATION ---
+        if (savedSchedule.isMasterRecord()) {
+            // This is the critical new step for your requirement
+            log.info("Triggering initial large-scale generation for new master record...");
+            scheduleAutomationService.performInitialGeneration(savedSchedule);
+        }
+
+        return busScheduleMapper.toDTO(savedSchedule, modelMapper);
+    }
+
+    private void configureMasterSchedule(BusScheduleEntity masterRecord, BusScheduleCreateDTO dto) {
+        if (dto.getAutomationDuration() == null) {
+            throw new ResourceNotFoundException("AutomationDuration must be provided for a master schedule.");
+        }
+
+        boolean masterExists = busScheduleRepository.existsByBusEntityIdAndBusRouteIdAndScheduleDate(
+                dto.getBusId(), dto.getRouteId(), dto.getScheduleDate());
+        if (masterExists) {
+            throw new ResourceNotFoundException("An automated schedule already exists for this bus and route combination.");
+        }
+
+        masterRecord.setMasterRecord(true);
+        masterRecord.setAutomationDuration(dto.getAutomationDuration());
+        LocalDate startDate = dto.getScheduleDate();
+        int monthsToAdd = dto.getAutomationDuration().getMonths();
+        LocalDate endDate = startDate.plusMonths(monthsToAdd);
+
+        //masterRecord.setAutomationEndDate(endDate);
+        log.info("Master schedule configured to run from {} to {}", startDate, endDate);
     }
 
     @Override
     public BusScheduleResponseDTO updateSchedule(Long id, BusScheduleCreateDTO scheduleCreateDTO) {
-        BusScheduleEntity existingSchedule = busScheduleRepository.findById(id).orElse(null);
-        BusEntity bus = busRepository.findById(scheduleCreateDTO.getBusId()).orElse(null);
-        BusRoute route = busRouteRepository.findById(scheduleCreateDTO.getRouteId()).orElse(null);
+        BusScheduleEntity existingSchedule = busScheduleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + id));
+
+        // Prevent updating a generated schedule's core details, or master's automation rules
+        if (existingSchedule.isMasterRecord() || !existingSchedule.getSeats().isEmpty()){
+            log.warn("Attempted to update a locked schedule (master or with bookings). ID: {}", id);
+            // Or throw an exception
+            // throw new InvalidRequestException("Master schedules or schedules with bookings cannot be updated this way.");
+        }
+
+        BusEntity bus = busRepository.findById(scheduleCreateDTO.getBusId())
+                .orElseThrow(() -> new ResourceNotFoundException("Bus not found with id: " + scheduleCreateDTO.getBusId()));
+        BusRoute route = busRouteRepository.findById(scheduleCreateDTO.getRouteId())
+                .orElseThrow(() -> new ResourceNotFoundException("BusRoute not found with id: " + scheduleCreateDTO.getRouteId()));
+
         BeanUtils.copyProperties(scheduleCreateDTO, existingSchedule);
+        existingSchedule.setBusEntity(bus);
+        existingSchedule.setBusRoute(route);
+
         BusScheduleEntity updatedSchedule = busScheduleRepository.save(existingSchedule);
-        updatedSchedule.setBusEntity(bus);
-        updatedSchedule.setBusRoute(route);
-        busScheduleRepository.save(updatedSchedule);
-        return busScheduleMapper.toDTO(updatedSchedule,modelMapper);
+        return busScheduleMapper.toDTO(updatedSchedule, modelMapper);
     }
+
 
     @Override
     public BusScheduleResponseDTO getSchedule(Long id) {
-        BusScheduleEntity scheduleEntity = busScheduleRepository.findById(id).orElse(null);
+        BusScheduleEntity scheduleEntity = busScheduleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + id));
         return busScheduleMapper.toDTO(scheduleEntity,modelMapper);
     }
 
@@ -98,7 +164,13 @@ public class BusScheduleServiceImpl implements BusScheduleService {
 
     @Override
     public void deleteSchedule(Long id) {
-        BusScheduleEntity scheduleEntity = busScheduleRepository.findById(id).orElse(null);
+        BusScheduleEntity scheduleEntity = busScheduleRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + id));
+
+        if (scheduleEntity.isMasterRecord()) {
+            throw new ResourceNotFoundException("Master records cannot be deleted. Please use a 'cancel automation' endpoint instead.");
+        }
         busScheduleRepository.delete(scheduleEntity);
+        log.info("Deleted schedule with id: {}", id);
     }
 }
