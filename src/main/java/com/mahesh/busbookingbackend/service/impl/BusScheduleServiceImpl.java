@@ -14,6 +14,7 @@ import com.mahesh.busbookingbackend.repository.BusRouteRepository;
 import com.mahesh.busbookingbackend.repository.BusScheduleRepository;
 import com.mahesh.busbookingbackend.service.BusScheduleService;
 import com.mahesh.busbookingbackend.service.ScheduleAutomationService;
+import com.mahesh.busbookingbackend.service.SeatService;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
@@ -38,14 +39,16 @@ public class BusScheduleServiceImpl implements BusScheduleService {
     private final BusRepository busRepository;
     private final BusRouteRepository busRouteRepository;
     private final ScheduleAutomationService scheduleAutomationService;
+    private final SeatService seatService;
 
-    public BusScheduleServiceImpl(BusScheduleRepository busScheduleRepository, BusScheduleMapper busScheduleMapper, ModelMapper modelMapper, BusRepository busRepository, BusRouteRepository busRouteRepository, ScheduleAutomationService scheduleAutomationService) {
+    public BusScheduleServiceImpl(BusScheduleRepository busScheduleRepository, BusScheduleMapper busScheduleMapper, ModelMapper modelMapper, BusRepository busRepository, BusRouteRepository busRouteRepository, ScheduleAutomationService scheduleAutomationService, SeatService seatService) {
         this.busScheduleRepository = busScheduleRepository;
         this.busScheduleMapper = busScheduleMapper;
         this.modelMapper = modelMapper;
         this.busRepository = busRepository;
         this.busRouteRepository = busRouteRepository;
         this.scheduleAutomationService = scheduleAutomationService;
+        this.seatService = seatService;
     }
 
     @Override
@@ -76,36 +79,16 @@ public class BusScheduleServiceImpl implements BusScheduleService {
         }
 
         BusScheduleEntity savedSchedule = busScheduleRepository.save(scheduleEntity);
+        log.info("Schedule created with ID: {}", savedSchedule.getId());
+        seatService.generateSeats(savedSchedule.getId());
+        log.info("Generating the seats for the schedule with ID: {}", savedSchedule.getId());
 
-        // --- TRIGGER INITIAL BATCH CREATION ---
         if (savedSchedule.isMasterRecord()) {
             // This is the critical new step for your requirement
             log.info("Triggering initial large-scale generation for new master record...");
             scheduleAutomationService.performInitialGeneration(savedSchedule);
         }
-
         return busScheduleMapper.toDTO(savedSchedule, modelMapper);
-    }
-
-    private void configureMasterSchedule(BusScheduleEntity masterRecord, BusScheduleCreateDTO dto) {
-        if (dto.getAutomationDuration() == null) {
-            throw new ResourceNotFoundException("AutomationDuration must be provided for a master schedule.");
-        }
-
-        boolean masterExists = busScheduleRepository.existsByBusEntityIdAndBusRouteIdAndScheduleDate(
-                dto.getBusId(), dto.getRouteId(), dto.getScheduleDate());
-        if (masterExists) {
-            throw new ResourceNotFoundException("An automated schedule already exists for this bus and route combination.");
-        }
-
-        masterRecord.setMasterRecord(true);
-        masterRecord.setAutomationDuration(dto.getAutomationDuration());
-        LocalDate startDate = dto.getScheduleDate();
-        int monthsToAdd = dto.getAutomationDuration().getMonths();
-        LocalDate endDate = startDate.plusMonths(monthsToAdd);
-
-        //masterRecord.setAutomationEndDate(endDate);
-        log.info("Master schedule configured to run from {} to {}", startDate, endDate);
     }
 
     @Override

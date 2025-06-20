@@ -3,6 +3,7 @@ package com.mahesh.busbookingbackend.service.impl;
 import com.mahesh.busbookingbackend.entity.BusScheduleEntity;
 import com.mahesh.busbookingbackend.repository.BusScheduleRepository;
 import com.mahesh.busbookingbackend.service.ScheduleAutomationService;
+import com.mahesh.busbookingbackend.service.SeatService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,11 @@ import java.util.List;
 @Service
 public class scheduleAutomationService implements ScheduleAutomationService {
     private final BusScheduleRepository scheduleRepository;
+    private final SeatService seatService;
 
-    public scheduleAutomationService(BusScheduleRepository scheduleRepository) {
+    public scheduleAutomationService(BusScheduleRepository scheduleRepository, SeatService seatService) {
         this.scheduleRepository = scheduleRepository;
+        this.seatService = seatService;
     }
 
     @Transactional
@@ -27,7 +30,7 @@ public class scheduleAutomationService implements ScheduleAutomationService {
         }
 
         log.info("Performing large initial schedule generation for master record ID: {}", master.getId());
-        long daysToGenerate = master.getAutomationDuration().getMonths() * 30L; // Approx. 30 days per month
+        long daysToGenerate = master.getAutomationDuration().getMonths() * 30L;
         LocalDate startDate = master.getScheduleDate();
         LocalDate endDate = startDate.plusDays(daysToGenerate);
 
@@ -87,7 +90,8 @@ public class scheduleAutomationService implements ScheduleAutomationService {
         newSchedule.setScheduleDate(scheduleDate);
         newSchedule.setMasterRecord(false);
 
-        scheduleRepository.save(newSchedule);
+        BusScheduleEntity schedule = scheduleRepository.save(newSchedule);
+        seatService.generateSeats(schedule.getId());
         log.info("Auto-generated schedule for Bus {} on {}", master.getBusEntity().getId(), scheduleDate);
     }
 }
