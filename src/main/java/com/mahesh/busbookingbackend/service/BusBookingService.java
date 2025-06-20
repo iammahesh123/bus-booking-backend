@@ -11,5 +11,5 @@ public interface BusBookingService {
     BusBookingDTO getBusBooking(Long bookingId);
     List<BusBookingDTO> getBusBookings();
     void deleteBusBooking(Long bookingId);
-
+    BusBookingDTO confirmPayment(Long bookingId);
 }

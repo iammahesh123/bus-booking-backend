@@ -4,30 +4,36 @@ import com.mahesh.busbookingbackend.dtos.BusBookingCreateDTO;
 import com.mahesh.busbookingbackend.dtos.BusBookingDTO;
 import com.mahesh.busbookingbackend.dtos.SeatDTO;
 import com.mahesh.busbookingbackend.entity.BusBookingEntity;
+import com.mahesh.busbookingbackend.entity.PassengerEntity;
 import com.mahesh.busbookingbackend.entity.SeatEntity;
+import com.mahesh.busbookingbackend.entity.UserEntity;
 import com.mahesh.busbookingbackend.enums.BookingStatus;
 import com.mahesh.busbookingbackend.enums.SeatStatus;
 import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.BusBookingMapper;
 import com.mahesh.busbookingbackend.repository.BusBookingRepository;
 import com.mahesh.busbookingbackend.repository.SeatRepository;
+import com.mahesh.busbookingbackend.repository.UserRepository;
 import com.mahesh.busbookingbackend.service.BusBookingService;
+import com.mahesh.busbookingbackend.service.EmailService;
 import com.mahesh.busbookingbackend.service.SeatService;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class BusBookingServiceImpl implements BusBookingService {
     private final BusBookingRepository busBookingRepository;
@@ -35,15 +41,19 @@ public class BusBookingServiceImpl implements BusBookingService {
     private final ModelMapper modelMapper;
     private final SeatService seatService;
     private final SeatRepository seatRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
 
     private static final int BOOKING_EXPIRY_MINUTES = 15;
 
-    public BusBookingServiceImpl(BusBookingRepository busBookingRepository, BusBookingMapper busBookingMapper, ModelMapper modelMapper, SeatService seatService, SeatRepository seatRepository) {
+    public BusBookingServiceImpl(BusBookingRepository busBookingRepository, BusBookingMapper busBookingMapper, ModelMapper modelMapper, SeatService seatService, SeatRepository seatRepository, UserRepository userRepository, EmailService emailService) {
         this.busBookingRepository = busBookingRepository;
         this.busBookingMapper = busBookingMapper;
         this.modelMapper = modelMapper;
         this.seatService = seatService;
         this.seatRepository = seatRepository;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     @Override
@@ -77,18 +87,15 @@ public class BusBookingServiceImpl implements BusBookingService {
     @Transactional
     @Retryable(value = {OptimisticLockingFailureException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public BusBookingDTO updateBusBooking(Long bookingId, BusBookingCreateDTO busBookingCreateDTO) {
-        // Get existing booking
         BusBookingEntity existingBooking = busBookingRepository.findById(bookingId).orElseThrow(
                 () -> new ResourceNotFoundException("booking id " + bookingId + " not found")
         );
 
-        // Check if booking is expired (similar to confirmPayment)
         if (existingBooking.getExpiryTime().isBefore(LocalDateTime.now())) {
             releaseSeats(existingBooking);
             throw new ResourceNotFoundException("Booking has expired and cannot be updated");
         }
 
-        // Release previously booked seats (similar to releaseSeats)
         existingBooking.getSeats().forEach(seat -> {
             seat.setSeatStatus(SeatStatus.AVAILABLE);
             seat.setBusBooking(null);
@@ -96,7 +103,6 @@ public class BusBookingServiceImpl implements BusBookingService {
         });
         existingBooking.getSeats().clear();
 
-        // Process new seat selection (similar to createBusBooking)
         Set<Long> seatNumbers = busBookingCreateDTO.getSeatIds();
         long scheduleId = busBookingCreateDTO.getBusScheduleId();
         double totalPrice = 0;
@@ -110,7 +116,6 @@ public class BusBookingServiceImpl implements BusBookingService {
             totalPrice += seat.getSeatPrice();
         }
 
-        // Update booking properties (similar to original update)
         BeanUtils.copyProperties(busBookingCreateDTO, existingBooking);
         existingBooking.setTotalPrice(totalPrice);
         existingBooking.setExpiryTime(LocalDateTime.now().plusMinutes(BOOKING_EXPIRY_MINUTES));
@@ -153,6 +158,10 @@ public class BusBookingServiceImpl implements BusBookingService {
         booking.setBookingStatus(BookingStatus.CONFIRMED);
 
         BusBookingEntity updatedBooking = busBookingRepository.save(booking);
+
+        // Send the confirmation email
+        sendBookingConfirmationEmail(updatedBooking);
+
         return busBookingMapper.toDTO(updatedBooking, modelMapper);
     }
 
@@ -173,5 +182,74 @@ public class BusBookingServiceImpl implements BusBookingService {
         List<BusBookingEntity> expiredBookings = busBookingRepository
                 .findByBookingStatusAndExpiryTimeBefore(BookingStatus.PENDING, LocalDateTime.now());
         expiredBookings.forEach(this::releaseSeats);
+    }
+
+    /**
+     * Constructs and sends a booking confirmation email to the user.
+     * @param booking The confirmed booking entity.
+     */
+    private void sendBookingConfirmationEmail(BusBookingEntity booking) {
+        // The booking.getUserId() field is expected to hold the user's email
+        UserEntity user = userRepository.findByEmail(booking.getUserId());
+        if (user == null) {
+            log.warn("User with email {} not found. Cannot send booking confirmation.", booking.getUserId());
+            return;
+        }
+
+        String subject = "Your Blue Bus Booking is Confirmed! Booking ID: " + booking.getBookingNumber();
+
+        // Format seat and passenger details for the email
+        String seatNumbers = booking.getSeats().stream()
+                .map(SeatEntity::getSeatNumber)
+                .collect(Collectors.joining(", "));
+
+        String passengerNames = booking.getPassengers().stream()
+                .map(PassengerEntity::getPassengerName)
+                .collect(Collectors.joining(", "));
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("hh:mm a");
+
+        String formattedDate = booking.getBusSchedule().getScheduleDate().format(dateFormatter);
+        String formattedDeparture = booking.getBusSchedule().getDepartureTime().format(timeFormatter);
+        String formattedArrival = booking.getBusSchedule().getArrivalTime().format(timeFormatter);
+
+        // Build a user-friendly HTML email body
+        String emailBody = String.format("""
+            <html>
+                <body style="font-family: Arial, sans-serif; color: #333;">
+                    <h2>Hello %s,</h2>
+                    <p>Thank you for booking with Blue Bus. Your booking is confirmed!</p>
+                    <h3 style="color: #0056b3;">Booking Details:</h3>
+                    <table border="1" cellpadding="10" style="border-collapse: collapse; width: 100%%;">
+                        <tr><td style="width: 30%%;"><strong>Booking ID:</strong></td><td>%s</td></tr>
+                        <tr><td><strong>Bus:</strong></td><td>%s</td></tr>
+                        <tr><td><strong>Route:</strong></td><td>%s to %s</td></tr>
+                        <tr><td><strong>Date of Journey:</strong></td><td>%s</td></tr>
+                        <tr><td><strong>Departure Time:</strong></td><td>%s</td></tr>
+                        <tr><td><strong>Arrival Time:</strong></td><td>%s</td></tr>
+                        <tr><td><strong>Seat(s):</strong></td><td>%s</td></tr>
+                        <tr><td><strong>Total Fare:</strong></td><td>₹%.2f</td></tr>
+                        <tr><td><strong>Passengers:</strong></td><td>%s</td></tr>
+                    </table>
+                    <p>We wish you a safe and pleasant journey!</p>
+                    <p>Best Regards,<br/>The Blue Bus Team</p>
+                </body>
+            </html>
+            """,
+                user.getFullName(),
+                booking.getBookingNumber(),
+                booking.getBusSchedule().getBusEntity().getBusName(),
+                booking.getBusSchedule().getBusRoute().getSourceCity(),
+                booking.getBusSchedule().getBusRoute().getDestinationCity(),
+                formattedDate,
+                formattedDeparture,
+                formattedArrival,
+                seatNumbers,
+                booking.getTotalPrice(),
+                passengerNames
+        );
+
+        emailService.sendEmail(user.getEmail(), subject, emailBody);
     }
 }

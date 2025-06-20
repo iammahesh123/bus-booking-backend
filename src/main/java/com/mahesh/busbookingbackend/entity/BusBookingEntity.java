@@ -1,5 +1,6 @@
 package com.mahesh.busbookingbackend.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.mahesh.busbookingbackend.audit.BaseEntity;
 import com.mahesh.busbookingbackend.enums.BookingStatus;
 import com.mahesh.busbookingbackend.enums.PaymentStatus;
@@ -38,14 +39,20 @@ public class BusBookingEntity extends BaseEntity<String> {
 
     @OneToMany(mappedBy = "busBooking",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
     @ToString.Exclude
+    @JsonManagedReference("booking-seats")
     private Set<SeatEntity> seats = new HashSet<>();
 
     @OneToMany(mappedBy = "busBooking",fetch = FetchType.EAGER,cascade = CascadeType.ALL)
     @ToString.Exclude
+    @JsonManagedReference("booking-passengers")
     private List<PassengerEntity> passengers = new ArrayList<>();
 
     @OneToOne
     @ToString.Exclude
     private BusScheduleEntity busSchedule;
+
+    @OneToOne(mappedBy = "busBooking", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private PaymentEntity payment;
 
 }
