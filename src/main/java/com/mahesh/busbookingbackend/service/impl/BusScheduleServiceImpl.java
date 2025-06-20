@@ -82,12 +82,8 @@ public class BusScheduleServiceImpl implements BusScheduleService {
         log.info("Schedule created with ID: {}", savedSchedule.getId());
         seatService.generateSeats(savedSchedule.getId());
         log.info("Generating the seats for the schedule with ID: {}", savedSchedule.getId());
-
-        if (savedSchedule.isMasterRecord()) {
-            // This is the critical new step for your requirement
-            log.info("Triggering initial large-scale generation for new master record...");
-            scheduleAutomationService.performInitialGeneration(savedSchedule);
-        }
+        log.info("Triggering initial large-scale generation for new master record...");
+        scheduleAutomationService.performInitialGeneration(savedSchedule);
         return busScheduleMapper.toDTO(savedSchedule, modelMapper);
     }
 

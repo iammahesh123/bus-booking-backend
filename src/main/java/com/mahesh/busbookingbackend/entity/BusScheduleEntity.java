@@ -51,5 +51,5 @@ public class BusScheduleEntity extends BaseEntity<String> {
     private List<SeatEntity> seats = new ArrayList<>();
 
     @Column(name = "is_master_record", columnDefinition = "BOOLEAN DEFAULT FALSE")
-    private boolean isMasterRecord = false;
+    private boolean isMasterRecord = true;
 }

@@ -25,9 +25,9 @@ public class scheduleAutomationService implements ScheduleAutomationService {
 
     @Transactional
     public void performInitialGeneration(BusScheduleEntity master) {
-        if (!master.isMasterRecord() || master.getAutomationDuration() == null) {
-            return;
-        }
+//        if (!master.isMasterRecord() || master.getAutomationDuration() == null) {
+//            return;
+//        }
 
         log.info("Performing large initial schedule generation for master record ID: {}", master.getId());
         long daysToGenerate = master.getAutomationDuration().getMonths() * 30L;

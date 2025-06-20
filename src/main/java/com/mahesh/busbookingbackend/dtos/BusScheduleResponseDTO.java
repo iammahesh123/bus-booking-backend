@@ -1,5 +1,6 @@
 package com.mahesh.busbookingbackend.dtos;
 
+import com.mahesh.busbookingbackend.enums.ScheduleDuration;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,6 +20,8 @@ public class BusScheduleResponseDTO {
     private LocalTime departureTime;
     private int totalSeats;
     private int farePrice;
+    private ScheduleDuration automationDuration;
+    private boolean isMasterRecord;
     private String createdAt;
     private String updatedAt;
     private String updatedBy;

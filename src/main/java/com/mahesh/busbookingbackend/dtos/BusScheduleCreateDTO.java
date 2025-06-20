@@ -20,5 +20,5 @@ public class BusScheduleCreateDTO {
     private int totalSeats;
     private int farePrice;
     private ScheduleDuration automationDuration;
-    private boolean isMasterRecord = false;
+    private boolean isMasterRecord;
 }
