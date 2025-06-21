@@ -91,14 +91,10 @@ public class BusScheduleServiceImpl implements BusScheduleService {
     public BusScheduleResponseDTO updateSchedule(Long id, BusScheduleCreateDTO scheduleCreateDTO) {
         BusScheduleEntity existingSchedule = busScheduleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + id));
-
-        // Prevent updating a generated schedule's core details, or master's automation rules
         if (existingSchedule.isMasterRecord() || !existingSchedule.getSeats().isEmpty()){
             log.warn("Attempted to update a locked schedule (master or with bookings). ID: {}", id);
-            // Or throw an exception
-            // throw new InvalidRequestException("Master schedules or schedules with bookings cannot be updated this way.");
+            throw new ResourceNotFoundException("Master schedules or schedules with bookings cannot be updated this way.");
         }
-
         BusEntity bus = busRepository.findById(scheduleCreateDTO.getBusId())
                 .orElseThrow(() -> new ResourceNotFoundException("Bus not found with id: " + scheduleCreateDTO.getBusId()));
         BusRoute route = busRouteRepository.findById(scheduleCreateDTO.getRouteId())

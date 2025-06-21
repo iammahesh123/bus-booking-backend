@@ -35,7 +35,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/bus-schedule/fetch-schedules",
             "/bus-seats/view-seats/**",
-            "/bus-route/cities"
+            "/bus-route/**"
     };
 
     @Bean
@@ -62,7 +62,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("https://booking-app-frontend-blue.vercel.app/", "http://localhost:4200", "http://localhost:5174"));
+        configuration.setAllowedOrigins(List.of("https://booking-app-frontend-blue.vercel.app/", "http://localhost:4200", "http://localhost:5173"));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Cache-Control", "Content-Type"));

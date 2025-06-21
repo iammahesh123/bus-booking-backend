@@ -127,8 +127,7 @@ public class BusBookingServiceImpl implements BusBookingService {
     @Override
     public BusBookingDTO getBusBooking(Long bookingId) {
         BusBookingEntity existingBooking = busBookingRepository.findById(bookingId).orElseThrow(
-                () -> new ResourceNotFoundException("booking id " + bookingId + " not found")
-        );
+                () -> new ResourceNotFoundException("booking id " + bookingId + " not found"));
         return busBookingMapper.toDTO(existingBooking,modelMapper);
     }
 
@@ -153,13 +152,10 @@ public class BusBookingServiceImpl implements BusBookingService {
             releaseSeats(booking);
             throw new ResourceNotFoundException("Booking has expired");
         }
-
         booking.getSeats().forEach(seat -> seat.setSeatStatus(SeatStatus.BOOKED));
         booking.setBookingStatus(BookingStatus.CONFIRMED);
 
         BusBookingEntity updatedBooking = busBookingRepository.save(booking);
-
-        // Send the confirmation email
         sendBookingConfirmationEmail(updatedBooking);
 
         return busBookingMapper.toDTO(updatedBooking, modelMapper);
@@ -184,12 +180,7 @@ public class BusBookingServiceImpl implements BusBookingService {
         expiredBookings.forEach(this::releaseSeats);
     }
 
-    /**
-     * Constructs and sends a booking confirmation email to the user.
-     * @param booking The confirmed booking entity.
-     */
     private void sendBookingConfirmationEmail(BusBookingEntity booking) {
-        // The booking.getUserId() field is expected to hold the user's email
         UserEntity user = userRepository.findByEmail(booking.getUserId());
         if (user == null) {
             log.warn("User with email {} not found. Cannot send booking confirmation.", booking.getUserId());
@@ -197,8 +188,6 @@ public class BusBookingServiceImpl implements BusBookingService {
         }
 
         String subject = "Your Blue Bus Booking is Confirmed! Booking ID: " + booking.getBookingNumber();
-
-        // Format seat and passenger details for the email
         String seatNumbers = booking.getSeats().stream()
                 .map(SeatEntity::getSeatNumber)
                 .collect(Collectors.joining(", "));
@@ -213,8 +202,6 @@ public class BusBookingServiceImpl implements BusBookingService {
         String formattedDate = booking.getBusSchedule().getScheduleDate().format(dateFormatter);
         String formattedDeparture = booking.getBusSchedule().getDepartureTime().format(timeFormatter);
         String formattedArrival = booking.getBusSchedule().getArrivalTime().format(timeFormatter);
-
-        // Build a user-friendly HTML email body
         String emailBody = String.format("""
             <html>
                 <body style="font-family: Arial, sans-serif; color: #333;">
@@ -249,7 +236,6 @@ public class BusBookingServiceImpl implements BusBookingService {
                 booking.getTotalPrice(),
                 passengerNames
         );
-
         emailService.sendEmail(user.getEmail(), subject, emailBody);
     }
 }

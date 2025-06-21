@@ -153,20 +153,14 @@ public class SeatServiceImpl implements SeatService {
     public SeatDTO lockSeat(Long scheduleId, Long seatNumber) {
         SeatEntity seat = seatRepository.findSeatForBookingWithLock(scheduleId, seatNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Seat not found"));
-
-        // Add explicit validation
         if (seat.getSeatStatus() == null) {
             throw new IllegalStateException("Seat status cannot be null");
         }
-
         if (seat.getSeatStatus() != SeatStatus.AVAILABLE) {
             throw new IllegalStateException("Seat is already " + seat.getSeatStatus());
         }
-
         seat.setSeatStatus(SeatStatus.PENDING);
-        // Consider adding flush to immediately detect any DB constraint violations
         seatRepository.saveAndFlush(seat);
-
         return seatMapper.toDTO(seat, modelMapper);
     }
 }

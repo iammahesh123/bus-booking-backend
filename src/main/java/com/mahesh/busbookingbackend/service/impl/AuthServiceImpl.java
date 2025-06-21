@@ -32,7 +32,6 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponseDTO register(UserRegisterDTO userRegisterDTO) {
 
         UserEntity userData = userRepository.findByEmail(userRegisterDTO.getEmail());
-        // Check if email already exists
         if (userData != null) {
             throw new RuntimeException("Email is already registered");
         }
