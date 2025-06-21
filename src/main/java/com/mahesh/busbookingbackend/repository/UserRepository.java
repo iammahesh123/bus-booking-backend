@@ -13,4 +13,5 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     UserEntity findByEmail(@NotBlank(message = "Email is required") @Email(message = "Invalid email format") String email);
+    UserEntity findByPasswordResetToken(String token);
 }

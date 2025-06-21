@@ -25,10 +25,6 @@ public class scheduleAutomationService implements ScheduleAutomationService {
 
     @Transactional
     public void performInitialGeneration(BusScheduleEntity master) {
-//        if (!master.isMasterRecord() || master.getAutomationDuration() == null) {
-//            return;
-//        }
-
         log.info("Performing large initial schedule generation for master record ID: {}", master.getId());
         long daysToGenerate = master.getAutomationDuration().getMonths() * 30L;
         LocalDate startDate = master.getScheduleDate();
@@ -45,10 +41,6 @@ public class scheduleAutomationService implements ScheduleAutomationService {
     }
 
 
-    /**
-     * Daily job to maintain the rolling window.
-     * This is an efficient "top-up" operation.
-     */
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
     public void maintainRollingWindow() {
@@ -59,17 +51,10 @@ public class scheduleAutomationService implements ScheduleAutomationService {
         for (BusScheduleEntity master : masterRecords) {
             long windowSizeInDays = master.getAutomationDuration().getMonths() * 30L;
             LocalDate today = LocalDate.now();
-
-            // Find the last schedule we have in the database for this route
             LocalDate lastExistingScheduleDate = scheduleRepository
                     .findLatestScheduleDateForBusAndRoute(master.getBusEntity().getId(), master.getBusRoute().getId())
                     .orElse(today.minusDays(1));
-
-            // Calculate the date the window SHOULD end on
             LocalDate desiredWindowEndDate = today.plusDays(windowSizeInDays);
-
-            // If our last schedule is before the desired end date, add the missing ones.
-            // On a normal day, this loop will run only once to add the newest day.
             LocalDate nextDateToCreate = lastExistingScheduleDate.plusDays(1);
             while(!nextDateToCreate.isAfter(desiredWindowEndDate)) {
                 createAndSaveNewSchedule(master, nextDateToCreate);

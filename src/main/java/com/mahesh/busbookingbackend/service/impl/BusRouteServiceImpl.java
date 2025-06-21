@@ -95,10 +95,6 @@ public class BusRouteServiceImpl implements BusRouteService {
     public List<String> getAllUniqueCities() {
         List<String> sourceCities = busRouteRepository.findAllDistinctSourceCities();
         List<String> destinationCities = busRouteRepository.findAllDistinctDestinationCities();
-
-        return Stream.concat(sourceCities.stream(), destinationCities.stream())
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
+        return Stream.concat(sourceCities.stream(), destinationCities.stream()).distinct().sorted().collect(Collectors.toList());
     }
 }

@@ -2,6 +2,7 @@ package com.mahesh.busbookingbackend.service.impl;
 
 import com.mahesh.busbookingbackend.dtos.*;
 import com.mahesh.busbookingbackend.entity.BusEntity;
+import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.BusMapper;
 import com.mahesh.busbookingbackend.repository.BusRepository;
 import com.mahesh.busbookingbackend.service.BusService;
@@ -36,7 +37,7 @@ public class BusServiceImpl implements BusService {
     @Override
     public BusResponseDTO updateBus(Long id, BusCreateDTO busCreateDTO) {
         BusEntity existingBus = busRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("No such bus")
+                () -> new ResourceNotFoundException("No such bus")
         );
         BeanUtils.copyProperties(busCreateDTO, existingBus);
         BusEntity updatedBus = busRepository.save(existingBus);
@@ -46,7 +47,7 @@ public class BusServiceImpl implements BusService {
     @Override
     public BusResponseDTO getBus(Long id) {
         BusEntity busEntity = busRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("No such bus")
+                () -> new ResourceNotFoundException("No such bus")
         );
         return busMapper.toDTO(busEntity,modelMapper);
     }
@@ -76,7 +77,7 @@ public class BusServiceImpl implements BusService {
     @Override
     public void deleteBus(Long id) {
         BusEntity busEntity = busRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("No such bus"));
+                () -> new ResourceNotFoundException("No such bus"));
         busRepository.delete(busEntity);
     }
 }

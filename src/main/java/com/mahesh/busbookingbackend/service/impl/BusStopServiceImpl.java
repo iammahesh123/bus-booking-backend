@@ -3,6 +3,7 @@ package com.mahesh.busbookingbackend.service.impl;
 import com.mahesh.busbookingbackend.dtos.BusStopCreateDTO;
 import com.mahesh.busbookingbackend.dtos.BusStopResponseDTO;
 import com.mahesh.busbookingbackend.entity.BusStops;
+import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.BusStopMapper;
 import com.mahesh.busbookingbackend.repository.BusStopRepository;
 import com.mahesh.busbookingbackend.service.BusStopService;
@@ -37,7 +38,7 @@ public class BusStopServiceImpl implements BusStopService {
     @Override
     public BusStopResponseDTO updateBusStop(Long id, BusStopCreateDTO busStopCreateDTO) {
         BusStops existingStop = busStopRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("No such stop exists: " + id));
+                () -> new ResourceNotFoundException("No such stop exists: " + id));
         BeanUtils.copyProperties(busStopCreateDTO, existingStop);
         BusStops updatedStop = busStopRepository.save(existingStop);
         return busStopMapper.toDTO(updatedStop,modelMapper);
@@ -45,7 +46,7 @@ public class BusStopServiceImpl implements BusStopService {
 
     @Override
     public BusStopResponseDTO getBusStop(Long id) {
-        BusStops existingStop = busStopRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("No such stop exists: " + id));
+        BusStops existingStop = busStopRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("No such stop exists: " + id));
         return busStopMapper.toDTO(existingStop,modelMapper);
     }
 
@@ -57,7 +58,7 @@ public class BusStopServiceImpl implements BusStopService {
 
     @Override
     public void deleteBusStop(Long id) {
-        BusStops existingStop = busStopRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("No such stop exists: " + id));
+        BusStops existingStop = busStopRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("No such stop exists: " + id));
         busStopRepository.delete(existingStop);
     }
 }

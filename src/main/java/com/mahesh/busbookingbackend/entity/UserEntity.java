@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Data
@@ -24,4 +26,6 @@ public class UserEntity extends BaseEntity<String> {
     private UserRole role;
     private String phoneNumber;
     private String password;
+    private String passwordResetToken;
+    private LocalDateTime passwordResetTokenExpiry;
 }

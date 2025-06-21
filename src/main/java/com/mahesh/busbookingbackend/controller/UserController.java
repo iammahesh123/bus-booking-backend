@@ -1,8 +1,6 @@
 package com.mahesh.busbookingbackend.controller;
 
-import com.mahesh.busbookingbackend.dtos.AuthResponseDTO;
-import com.mahesh.busbookingbackend.dtos.UserLoginDTO;
-import com.mahesh.busbookingbackend.dtos.UserRegisterDTO;
+import com.mahesh.busbookingbackend.dtos.*;
 import com.mahesh.busbookingbackend.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,63 +22,50 @@ public class UserController {
 
     @Operation(summary = "Register a new user")
     @PostMapping("/register")
-    public ResponseEntity<AuthResponseDTO> register(
-            @RequestBody UserRegisterDTO userRegisterDTO,
-            HttpServletResponse response
-    ) {
+    public ResponseEntity<AuthResponseDTO> register(@RequestBody UserRegisterDTO userRegisterDTO, HttpServletResponse response) {
         AuthResponseDTO authResponse = authService.register(userRegisterDTO);
-        setRefreshTokenCookie(response, authResponse.getRefreshToken());
+        authService.setRefreshTokenCookie(response, authResponse.getRefreshToken());
         return ResponseEntity.ok(authResponse);
     }
 
     @Operation(summary = "Login with username and password")
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDTO> login(
-            @RequestBody UserLoginDTO userLoginDTO,
-            HttpServletResponse response
-    ) {
+    public ResponseEntity<AuthResponseDTO> login(@RequestBody UserLoginDTO userLoginDTO, HttpServletResponse response) {
         AuthResponseDTO authResponse = authService.login(userLoginDTO.getEmail(), userLoginDTO.getPassword());
-        setRefreshTokenCookie(response, authResponse.getRefreshToken());
+        authService.setRefreshTokenCookie(response, authResponse.getRefreshToken());
         return ResponseEntity.ok(authResponse);
     }
 
     @Operation(summary = "Refresh access token")
     @PostMapping("/refresh-token")
-    public ResponseEntity<AuthResponseDTO> refreshToken(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken,
-            HttpServletResponse response
-    ) {
+    public ResponseEntity<AuthResponseDTO> refreshToken(@CookieValue(name = "refreshToken", required = false) String refreshToken, HttpServletResponse response) {
         if (refreshToken == null) {
             throw new RuntimeException("Refresh token is missing");
         }
 
         AuthResponseDTO authResponse = authService.refreshToken(refreshToken);
-        setRefreshTokenCookie(response, authResponse.getRefreshToken());
+        authService.setRefreshTokenCookie(response, authResponse.getRefreshToken());
         return ResponseEntity.ok(authResponse);
     }
 
     @Operation(summary = "Logout user")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse response) {
-        expireRefreshTokenCookie(response);
+        authService.expireRefreshTokenCookie(response);
         return ResponseEntity.noContent().build();
     }
 
-    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie("refreshToken", refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/auth-user/refresh-token");
-        cookie.setMaxAge((int) (7 * 24 * 60 * 60));
-        response.addCookie(cookie);
+    @Operation(summary = "Forgot password request")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequestDTO requestDTO) {
+        authService.forgotPassword(requestDTO.getEmail());
+        return ResponseEntity.ok("If an account with the provided email exists, a password reset link has been sent.");
     }
 
-    private void expireRefreshTokenCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie("refreshToken", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/auth-user/refresh-token");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+    @Operation(summary = "Reset password with token")
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestParam("token") String token, @RequestBody ResetPasswordRequestDTO requestDTO) {
+        authService.resetPassword(token, requestDTO.getNewPassword());
+        return ResponseEntity.ok("Your password has been reset successfully.");
     }
 }

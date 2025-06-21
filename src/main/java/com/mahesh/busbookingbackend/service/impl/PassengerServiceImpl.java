@@ -3,6 +3,7 @@ package com.mahesh.busbookingbackend.service.impl;
 import com.mahesh.busbookingbackend.dtos.PassengerCreateDTO;
 import com.mahesh.busbookingbackend.dtos.PassengerResponseDTO;
 import com.mahesh.busbookingbackend.entity.PassengerEntity;
+import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.PassengerMapper;
 import com.mahesh.busbookingbackend.repository.PassengerRepository;
 import com.mahesh.busbookingbackend.service.PassengerService;
@@ -36,7 +37,8 @@ public class PassengerServiceImpl implements PassengerService {
 
     @Override
     public PassengerResponseDTO updatePassenger(Long id, PassengerCreateDTO passengerCreateDTO) {
-        PassengerEntity existingPassenger = passengerRepository.findById(id).orElse(null);
+        PassengerEntity existingPassenger = passengerRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Passenger not found with id: " + id));
         BeanUtils.copyProperties(passengerCreateDTO, existingPassenger);
         PassengerEntity savedPassenger = passengerRepository.save(existingPassenger);
         return passengerMapper.toDTO(savedPassenger,modelMapper);
@@ -50,13 +52,15 @@ public class PassengerServiceImpl implements PassengerService {
 
     @Override
     public PassengerResponseDTO getPassenger(Long id) {
-        PassengerEntity passenger = passengerRepository.findById(id).orElse(null);
+        PassengerEntity passenger = passengerRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Passenger not found with id: " + id));
         return passengerMapper.toDTO(passenger,modelMapper);
     }
 
     @Override
     public void deletePassenger(Long id) {
-        PassengerEntity passenger = passengerRepository.findById(id).orElse(null);
+        PassengerEntity passenger = passengerRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Passenger not found with id: " + id));
         passengerRepository.delete(passenger);
     }
 }

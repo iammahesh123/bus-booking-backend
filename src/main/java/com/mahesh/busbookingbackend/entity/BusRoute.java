@@ -27,6 +27,5 @@ public class BusRoute extends BaseEntity<String> {
     private List<BusStops> busStops = new ArrayList<>();
 
     @OneToMany(mappedBy = "busRoute", cascade = CascadeType.ALL)
-//    @ToString.Exclude
     private List<BusScheduleEntity> busSchedules = new ArrayList<>();
 }

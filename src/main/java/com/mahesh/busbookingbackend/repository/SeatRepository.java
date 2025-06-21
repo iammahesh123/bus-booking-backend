@@ -13,13 +13,13 @@ import java.util.Optional;
 
 @Repository
 public interface SeatRepository extends JpaRepository<SeatEntity, Long> {
+
     List<SeatEntity> findByBusScheduleId(Long busScheduleId);
-    // Pessimistic lock for seat
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM SeatEntity s WHERE s.busSchedule.id = :scheduleId AND s.id = :seatNumber")
     Optional<SeatEntity> findSeatForBookingWithLock(@Param("scheduleId") Long scheduleId, @Param("seatNumber") Long seatNumber);
 
-    // Check seat availability
     @Query("SELECT s FROM SeatEntity s WHERE s.busSchedule.id = :scheduleId AND s.seatNumber = :seatNumber AND s.seatStatus = 'AVAILABLE'")
     Optional<SeatEntity> findAvailableSeat(@Param("scheduleId") Long scheduleId, @Param("seatNumber") String seatNumber);
 }

@@ -18,7 +18,6 @@ public class ErrorResponse {
     private String path;
     private String detailedMessage;
 
-    // Constructors
     public ErrorResponse() {
         this.timestamp = LocalDateTime.now();
     }

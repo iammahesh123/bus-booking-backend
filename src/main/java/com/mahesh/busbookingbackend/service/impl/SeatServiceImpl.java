@@ -22,7 +22,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,46 +42,33 @@ public class SeatServiceImpl implements SeatService {
     @Override
     @Transactional
     public List<SeatDTO> generateSeats(long scheduleId) {
-        // Fetch the schedule entity
         BusScheduleEntity busSchedule = busScheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("Schedule not found with id: " + scheduleId));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + scheduleId));
         List<SeatDTO> seatDTOs = new ArrayList<>();
         List<SeatEntity> seatEntities = new ArrayList<>();
-
         int rows = 10;
         int seatsPerRow = 4;
-
         for (int row = 1; row <= rows; row++) {
             double rowMultiplier = row <= 3 ? 1.0 : row <= 7 ? 0.9 : 0.8;
-
             for (int seatNum = 1; seatNum <= seatsPerRow; seatNum++) {
-                char seatLetter = (char) (64 + seatNum); // A, B, C, D
-                String seatNumber = scheduleId + "-" + row + seatLetter; // Globally unique
-
+                char seatLetter = (char) (64 + seatNum);
+                String seatNumber = scheduleId + "-" + row + seatLetter;
                 SeatType type = (seatNum == 1 || seatNum == 4) ? SeatType.WINDOW : SeatType.AISLE;
                 int basePrice = getBasePrice(scheduleId);
                 int price = calculatePrice(basePrice, rowMultiplier, type);
-
                 SeatEntity seatEntity = new SeatEntity();
                 seatEntity.setSeatNumber(seatNumber);
                 seatEntity.setSeatType(type);
                 seatEntity.setSeatStatus(SeatStatus.AVAILABLE);
                 seatEntity.setSeatPrice(price);
                 seatEntity.setBusSchedule(busSchedule);
-
-                seatEntities.add(seatEntity); // Collect all seats
+                seatEntities.add(seatEntity);
             }
         }
-
-        // Persist all seats in batch
         List<SeatEntity> savedSeats = seatRepository.saveAll(seatEntities);
-
-        // Map to DTOs
         for (SeatEntity seat : savedSeats) {
             seatDTOs.add(seatMapper.toDTO(seat, modelMapper));
         }
-
         return seatDTOs;
     }
 
@@ -112,7 +98,8 @@ public class SeatServiceImpl implements SeatService {
 
     @Override
     public SeatDTO updateSeat(Long id, SeatCreateDTO seatCreateDTO) {
-        SeatEntity existingSeat = seatRepository.findById(id).orElse(null);
+        SeatEntity existingSeat = seatRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seat not found with id: " + id));
         BeanUtils.copyProperties(seatCreateDTO, existingSeat);
         SeatEntity updatedSeat = seatRepository.save(existingSeat);
         return seatMapper.toDTO(updatedSeat,modelMapper);
@@ -120,7 +107,8 @@ public class SeatServiceImpl implements SeatService {
 
     @Override
     public SeatDTO getSeat(Long id) {
-        SeatEntity existingSeat = seatRepository.findById(id).orElse(null);
+        SeatEntity existingSeat = seatRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seat not found with id: " + id));
         return seatMapper.toDTO(existingSeat,modelMapper);
     }
 
@@ -132,7 +120,8 @@ public class SeatServiceImpl implements SeatService {
 
     @Override
     public void deleteSeat(Long id) {
-        SeatEntity existingSeat = seatRepository.findById(id).orElse(null);
+        SeatEntity existingSeat = seatRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seat not found with id: " + id));
         seatRepository.delete(existingSeat);
     }
 
@@ -140,12 +129,9 @@ public class SeatServiceImpl implements SeatService {
     @Override
     public List<SeatDTO> viewSeats(long scheduleId) {
         BusScheduleEntity busSchedule = busScheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("Schedule not found with id: " + scheduleId));
-        //log.info(busSchedule.toString()); //headache error
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + scheduleId));
         List<SeatEntity> seatEntities = seatRepository.findByBusScheduleId(scheduleId);
-        return seatEntities.stream()
-                .map(seat -> seatMapper.toDTO(seat, modelMapper))
-                .collect(Collectors.toList());
+        return seatEntities.stream().map(seat -> seatMapper.toDTO(seat, modelMapper)).collect(Collectors.toList());
     }
 
     @Transactional
@@ -154,10 +140,10 @@ public class SeatServiceImpl implements SeatService {
         SeatEntity seat = seatRepository.findSeatForBookingWithLock(scheduleId, seatNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Seat not found"));
         if (seat.getSeatStatus() == null) {
-            throw new IllegalStateException("Seat status cannot be null");
+            throw new ResourceNotFoundException("Seat status cannot be null");
         }
         if (seat.getSeatStatus() != SeatStatus.AVAILABLE) {
-            throw new IllegalStateException("Seat is already " + seat.getSeatStatus());
+            throw new ResourceNotFoundException("Seat is already " + seat.getSeatStatus());
         }
         seat.setSeatStatus(SeatStatus.PENDING);
         seatRepository.saveAndFlush(seat);

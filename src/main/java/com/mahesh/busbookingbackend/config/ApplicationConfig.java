@@ -21,7 +21,6 @@ public class ApplicationConfig {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
-        // Use the local passwordEncoder bean method
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
