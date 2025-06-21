@@ -35,7 +35,9 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/bus-schedule/fetch-schedules",
             "/bus-seats/view-seats/**",
-            "/bus-route/**"
+            "/bus-route/**",
+            "/bus/**",
+            "/bus-stop/**"
     };
 
     @Bean
@@ -46,7 +48,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_ENDPOINTS).permitAll()
-                        .requestMatchers("/bus/**",  "/bus-stop/**").hasAuthority("ADMIN")
                         .requestMatchers("/bus-seats/generate-seats/**").hasAuthority("ADMIN")
                         .requestMatchers("/bus-booking/**", "/bus-passenger/**").hasAuthority("CUSTOMER")
                         .requestMatchers(HttpMethod.PUT, "/bus-seats/{seat_id}").hasAuthority("CUSTOMER")

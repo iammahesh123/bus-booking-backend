@@ -69,9 +69,9 @@ public class UserController {
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         Cookie cookie = new Cookie("refreshToken", refreshToken);
         cookie.setHttpOnly(true);
-        cookie.setSecure(true); // Enable in production with HTTPS
-        cookie.setPath("/api/auth/refresh-token");
-        cookie.setMaxAge((int) (7 * 24 * 60 * 60)); // 7 days
+        cookie.setSecure(true);
+        cookie.setPath("/auth-user/refresh-token");
+        cookie.setMaxAge((int) (7 * 24 * 60 * 60));
         response.addCookie(cookie);
     }
 
@@ -79,8 +79,8 @@ public class UserController {
         Cookie cookie = new Cookie("refreshToken", null);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
-        cookie.setPath("/api/auth/refresh-token");
-        cookie.setMaxAge(0); // Expire immediately
+        cookie.setPath("/auth-user/refresh-token");
+        cookie.setMaxAge(0);
         response.addCookie(cookie);
     }
 }
