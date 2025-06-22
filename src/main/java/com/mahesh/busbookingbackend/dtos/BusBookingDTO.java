@@ -21,7 +21,7 @@ public class BusBookingDTO {
     private BookingStatus bookingStatus;
     private PaymentStatus paymentStatus;
     private Set<SeatDTO> seatDTOS;
-    private List<PassengerCreateDTO> passengerCreateDTOS;
+    private List<PassengerResponseDTO> passengerResponseDTOS;
     private String createdAt;
     private String updatedAt;
     private String updatedBy;
