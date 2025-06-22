@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -31,68 +32,49 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final BusBookingService busBookingService;
 
-    @Value("${razorpay.key.secret}")
-    private String secretKey;
+//    @Value("${razorpay.key.secret}")
+//    private String secretKey;
 
     @Override
-    public Order createPaymentOrder(Long bookingId) throws RazorpayException {
-        BusBookingEntity booking = busBookingRepository.findById(bookingId)
+    public Map<String, String> createDemoPayment(Long bookingId) {
+        // In a real scenario, this would create a payment intent with a provider.
+        // For demo purposes, we just confirm the booking can proceed to payment.
+        busBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + bookingId));
-
-        int amountInPaisa = (int) (booking.getTotalPrice() * 100);
-
-        JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", amountInPaisa);
-        orderRequest.put("currency", "INR");
-        orderRequest.put("receipt", "booking_rcpt_" + bookingId);
-
-        Order order = razorpayClient.orders.create(orderRequest);
-        log.info("Razorpay Order created: {}", order);
-        return order;
+        log.info("Demo payment initiated for bookingId: {}", bookingId);
+        return Map.of(
+                "status", "success",
+                "message", "Payment initiated. Please confirm to complete.",
+                "bookingId", bookingId.toString()
+        );
     }
 
     @Override
     @Transactional
-    public Map<String, String> verifyPayment(Map<String, String> payload) {
-        String razorpayOrderId = payload.get("razorpay_order_id");
-        String razorpayPaymentId = payload.get("razorpay_payment_id");
-        String razorpaySignature = payload.get("razorpay_signature");
-        String receipt = payload.get("receipt");
-        Long bookingId = Long.parseLong(receipt.split("_")[2]);
+    public Map<String, String> confirmDemoPayment(Long bookingId) {
+        log.info("Confirming payment for bookingId: {}", bookingId);
 
-        try {
-            JSONObject options = new JSONObject();
-            options.put("razorpay_order_id", razorpayOrderId);
-            options.put("razorpay_payment_id", razorpayPaymentId);
-            options.put("razorpay_signature", razorpaySignature);
+        BusBookingEntity booking = busBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + bookingId));
 
-            boolean signatureVerified = Utils.verifyPaymentSignature(options, secretKey);
+        // Create a dummy payment record
+        PaymentEntity payment = new PaymentEntity();
+        payment.setRazorpayOrderId("DEMO_ORDER_" + UUID.randomUUID().toString());
+        payment.setRazorpayPaymentId("DEMO_PAYMENT_" + UUID.randomUUID().toString());
+        payment.setRazorpaySignature("DEMO_SIGNATURE");
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        payment.setBusBooking(booking);
 
-            if (signatureVerified) {
-                log.info("Payment signature verified successfully for order_id: {}", razorpayOrderId);
+        // Save the new PaymentEntity to the database
+        paymentRepository.save(payment);
 
-                BusBookingEntity booking = busBookingRepository.findById(bookingId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + bookingId));
-                PaymentEntity payment = new PaymentEntity();
-                payment.setRazorpayOrderId(razorpayOrderId);
-                payment.setRazorpayPaymentId(razorpayPaymentId);
-                payment.setRazorpaySignature(razorpaySignature);
-                payment.setPaymentStatus(PaymentStatus.PAID);
-                payment.setBusBooking(booking);
+        booking.setPayment(payment);
+        busBookingRepository.save(booking);
 
-                paymentRepository.save(payment);
-                booking.setPayment(payment);
-                busBookingRepository.save(booking);
-                busBookingService.confirmPayment(bookingId);
+        // Confirm the booking
+        busBookingService.confirmPayment(bookingId);
 
-                return Map.of("status", "success", "message", "Payment verified and booking confirmed.");
-            } else {
-                log.warn("Payment signature verification failed for order_id: {}", razorpayOrderId);
-                return Map.of("status", "failure", "message", "Payment verification failed.");
-            }
-        } catch (Exception e) {
-            log.error("Error during payment verification for order_id: {}", razorpayOrderId, e);
-            return Map.of("status", "error", "message", "Internal server error during payment verification.");
-        }
+        log.info("Payment confirmed and booking completed for bookingId: {}", bookingId);
+        return Map.of("status", "success", "message", "Payment verified and booking confirmed.");
     }
 }

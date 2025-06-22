@@ -18,24 +18,15 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    @PostMapping("/create-order/{bookingId}")
-    public ResponseEntity<?> createPaymentOrder(@PathVariable Long bookingId) {
-        try {
-            Order order = paymentService.createPaymentOrder(bookingId);
-            return ResponseEntity.ok(order.toString());
-        } catch (RazorpayException e) {
-            log.error("Error creating Razorpay order", e);
-            return ResponseEntity.status(500).body("Error creating payment order");
-        }
+    @PostMapping("/initiate-demo-payment/{bookingId}")
+    public ResponseEntity<?> createDemoPaymentOrder(@PathVariable Long bookingId) {
+        Map<String, String> result = paymentService.createDemoPayment(bookingId);
+        return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/verify")
-    public ResponseEntity<?> verifyPayment(@RequestBody Map<String, String> payload) {
-        Map<String, String> result = paymentService.verifyPayment(payload);
-        if ("success".equals(result.get("status"))) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.status(400).body(result);
-        }
+    @PostMapping("/confirm-demo-payment/{bookingId}")
+    public ResponseEntity<?> confirmDemoPayment(@PathVariable Long bookingId) {
+        Map<String, String> result = paymentService.confirmDemoPayment(bookingId);
+        return ResponseEntity.ok(result);
     }
 }

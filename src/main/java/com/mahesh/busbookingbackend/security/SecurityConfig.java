@@ -37,7 +37,8 @@ public class SecurityConfig {
             "/bus-seats/view-seats/**",
             "/bus-route/**",
             "/bus/**",
-            "/bus-stop/**"
+            "/bus-stop/**",
+            "/api/**"
     };
 
     @Bean

@@ -55,4 +55,12 @@ public class BusBookingEntity extends BaseEntity<String> {
     @JsonManagedReference
     private PaymentEntity payment;
 
+    //new Fields
+    private String busName;
+    private String busNumber;
+    private String sourceCity;
+    private String destinationCity;
+    private String departureTime;
+    private String arrivalTime;
+
 }

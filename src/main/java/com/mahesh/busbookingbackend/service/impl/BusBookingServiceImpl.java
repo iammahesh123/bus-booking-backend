@@ -3,17 +3,12 @@ package com.mahesh.busbookingbackend.service.impl;
 import com.mahesh.busbookingbackend.dtos.BusBookingCreateDTO;
 import com.mahesh.busbookingbackend.dtos.BusBookingDTO;
 import com.mahesh.busbookingbackend.dtos.SeatDTO;
-import com.mahesh.busbookingbackend.entity.BusBookingEntity;
-import com.mahesh.busbookingbackend.entity.PassengerEntity;
-import com.mahesh.busbookingbackend.entity.SeatEntity;
-import com.mahesh.busbookingbackend.entity.UserEntity;
+import com.mahesh.busbookingbackend.entity.*;
 import com.mahesh.busbookingbackend.enums.BookingStatus;
 import com.mahesh.busbookingbackend.enums.SeatStatus;
 import com.mahesh.busbookingbackend.exception.ResourceNotFoundException;
 import com.mahesh.busbookingbackend.mapper.BusBookingMapper;
-import com.mahesh.busbookingbackend.repository.BusBookingRepository;
-import com.mahesh.busbookingbackend.repository.SeatRepository;
-import com.mahesh.busbookingbackend.repository.UserRepository;
+import com.mahesh.busbookingbackend.repository.*;
 import com.mahesh.busbookingbackend.service.BusBookingService;
 import com.mahesh.busbookingbackend.service.EmailService;
 import com.mahesh.busbookingbackend.service.SeatService;
@@ -45,8 +40,10 @@ public class BusBookingServiceImpl implements BusBookingService {
     private final EmailService emailService;
 
     private static final int BOOKING_EXPIRY_MINUTES = 15;
+    private final PassengerRepository passengerRepository;
+    private final BusScheduleRepository busScheduleRepository;
 
-    public BusBookingServiceImpl(BusBookingRepository busBookingRepository, BusBookingMapper busBookingMapper, ModelMapper modelMapper, SeatService seatService, SeatRepository seatRepository, UserRepository userRepository, EmailService emailService) {
+    public BusBookingServiceImpl(BusBookingRepository busBookingRepository, BusBookingMapper busBookingMapper, ModelMapper modelMapper, SeatService seatService, SeatRepository seatRepository, UserRepository userRepository, EmailService emailService, PassengerRepository passengerRepository, BusScheduleRepository busScheduleRepository) {
         this.busBookingRepository = busBookingRepository;
         this.busBookingMapper = busBookingMapper;
         this.modelMapper = modelMapper;
@@ -54,18 +51,25 @@ public class BusBookingServiceImpl implements BusBookingService {
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
         this.emailService = emailService;
+        this.passengerRepository = passengerRepository;
+        this.busScheduleRepository = busScheduleRepository;
     }
 
-    @Override
+   @Override
     @Transactional
     @Retryable(value = {OptimisticLockingFailureException.class}, maxAttempts = 3, backoff = @Backoff(delay = 1000, multiplier = 2))
     public BusBookingDTO createBusBooking(BusBookingCreateDTO busBookingCreateDTO) {
         BusBookingEntity busBookingEntity = new BusBookingEntity();
         BeanUtils.copyProperties(busBookingCreateDTO, busBookingEntity);
+
+        long scheduleId = busBookingCreateDTO.getBusScheduleId();
+        BusScheduleEntity busSchedule = busScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + scheduleId));
+        busBookingEntity.setBusSchedule(busSchedule);
+
         busBookingEntity.setExpiryTime(LocalDateTime.now().plusMinutes(BOOKING_EXPIRY_MINUTES));
         BusBookingEntity savedBooking = busBookingRepository.save(busBookingEntity);
         Set<Long> seatNumbers = busBookingCreateDTO.getSeatIds();
-        long scheduleId = busBookingCreateDTO.getBusScheduleId();
         double totalPrice = 0;
         for (Long seatNumber : seatNumbers) {
             SeatDTO seatDTO = seatService.lockSeat(scheduleId, seatNumber);
@@ -76,8 +80,24 @@ public class BusBookingServiceImpl implements BusBookingService {
 
             totalPrice += seat.getSeatPrice();
         }
+        List<Long> passengerIds = busBookingCreateDTO.getPassengerIds();
+        for( Long passengerId : passengerIds) {
+            PassengerEntity passenger = passengerRepository.findById(passengerId).orElseThrow(
+                    () -> new ResourceNotFoundException("Passenger with id " + passengerId + " not found")
+            );
+            busBookingEntity.getPassengers().add(passenger);
+            passenger.setBusBooking(busBookingEntity);
+            passengerRepository.save(passenger);
+        }
         savedBooking.setTotalPrice(totalPrice);
         savedBooking.setBookingStatus(BookingStatus.PENDING);
+        savedBooking.setBusName(busSchedule.getBusEntity().getBusName());
+        savedBooking.setBusNumber(busSchedule.getBusEntity().getBusNumber());
+        savedBooking.setSourceCity(busSchedule.getBusRoute().getSourceCity());
+        savedBooking.setDestinationCity(busSchedule.getBusRoute().getDestinationCity());
+        savedBooking.setDepartureTime(busSchedule.getDepartureTime().toString());
+        savedBooking.setArrivalTime(busSchedule.getArrivalTime().toString());
+
         busBookingRepository.save(busBookingEntity);
         return busBookingMapper.toDTO(savedBooking,modelMapper);
     }
@@ -95,6 +115,10 @@ public class BusBookingServiceImpl implements BusBookingService {
             releaseSeats(existingBooking);
             throw new ResourceNotFoundException("Booking has expired and cannot be updated");
         }
+        long scheduleId = busBookingCreateDTO.getBusScheduleId();
+        BusScheduleEntity busSchedule = busScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Schedule not found with id: " + scheduleId));
+        existingBooking.setBusSchedule(busSchedule);
 
         existingBooking.getSeats().forEach(seat -> {
             seat.setSeatStatus(SeatStatus.AVAILABLE);
@@ -104,7 +128,6 @@ public class BusBookingServiceImpl implements BusBookingService {
         existingBooking.getSeats().clear();
 
         Set<Long> seatNumbers = busBookingCreateDTO.getSeatIds();
-        long scheduleId = busBookingCreateDTO.getBusScheduleId();
         double totalPrice = 0;
 
         for (Long seatNumber : seatNumbers) {
@@ -119,7 +142,12 @@ public class BusBookingServiceImpl implements BusBookingService {
         BeanUtils.copyProperties(busBookingCreateDTO, existingBooking);
         existingBooking.setTotalPrice(totalPrice);
         existingBooking.setExpiryTime(LocalDateTime.now().plusMinutes(BOOKING_EXPIRY_MINUTES));
-
+        existingBooking.setBusName(busSchedule.getBusEntity().getBusName());
+        existingBooking.setBusNumber(busSchedule.getBusEntity().getBusNumber());
+        existingBooking.setSourceCity(busSchedule.getBusRoute().getSourceCity());
+        existingBooking.setDestinationCity(busSchedule.getBusRoute().getDestinationCity());
+        existingBooking.setDepartureTime(busSchedule.getDepartureTime().toString());
+        existingBooking.setArrivalTime(busSchedule.getArrivalTime().toString());
         BusBookingEntity updatedBooking = busBookingRepository.save(existingBooking);
         return busBookingMapper.toDTO(updatedBooking, modelMapper);
     }
@@ -225,7 +253,7 @@ public class BusBookingServiceImpl implements BusBookingService {
             </html>
             """,
                 user.getFullName(),
-                booking.getBookingNumber(),
+                booking.getId(),
                 booking.getBusSchedule().getBusEntity().getBusName(),
                 booking.getBusSchedule().getBusRoute().getSourceCity(),
                 booking.getBusSchedule().getBusRoute().getDestinationCity(),
@@ -237,5 +265,6 @@ public class BusBookingServiceImpl implements BusBookingService {
                 passengerNames
         );
         emailService.sendEmail(user.getEmail(), subject, emailBody);
+        log.info("Booking confirmation email sent to {} for booking ID {}", user.getEmail(), booking.getBookingNumber());
     }
 }

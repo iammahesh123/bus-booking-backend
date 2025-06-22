@@ -22,6 +22,13 @@ public class BusBookingDTO {
     private PaymentStatus paymentStatus;
     private Set<SeatDTO> seatDTOS;
     private List<PassengerResponseDTO> passengerResponseDTOS;
+    //new Fields
+    private String busName;
+    private String busNumber;
+    private String sourceCity;
+    private String destinationCity;
+    private String departureTime;
+    private String arrivalTime;
     private String createdAt;
     private String updatedAt;
     private String updatedBy;

@@ -5,7 +5,6 @@ import com.razorpay.RazorpayException;
 import java.util.Map;
 
 public interface PaymentService {
-
-    Order createPaymentOrder(Long bookingId) throws RazorpayException;
-    Map<String, String> verifyPayment(Map<String, String> payload);
+    Map<String, String> createDemoPayment(Long bookingId);
+    Map<String, String> confirmDemoPayment(Long bookingId);
 }
